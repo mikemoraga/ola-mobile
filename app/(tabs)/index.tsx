@@ -106,6 +106,125 @@ export default function HomeScreen() {
   const pendingLoans = tableData.filter((row) => row[3] === "Submitted").length;
   const tableHead = ["Reference ID", "Transaction Date", "Loan Amount", "Loan Status"];
 
+  //-- FOR APPLY FOR LOAN VALIDATION --
+
+  const handleApplyForLoan = async () => {
+    const storedUser = await getData("user");
+
+    if (!storedUser?.token || !storedUser?.username) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${API_URL}api/OLMS/Loan/Validation`,
+        {
+          USERNAME: storedUser.username,
+          DEVICEID: "1",
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${storedUser.token}`,
+          },
+        }
+      );
+
+      const data = response.data;
+      console.log("Validation response:", data);
+      
+      // DataTable serializes as an array of row objects
+      const result = Array.isArray(data) ? data[0] : data;
+
+      const responseCode: string = result?.RESPONSE_CODE ?? "";
+      const allowUpload: string = result?.ALLOW_UPLOAD ?? "N";
+
+      // If API returns an error/message flag, block navigation
+      if (responseCode === "L_1") {
+        Toast.show({
+          type: "error",
+          text1: "Cannot Apply",
+          text2: result?.RESPONSE_MESSAGE || "Unable to proceed with transaction. Loan application is temporarily disabled on your designated branch.",
+        });
+        return;
+      }
+      else if (responseCode === "L_2") {
+        Toast.show({
+          type: "error",
+          text1: "Cannot Apply",
+          text2: result?.RESPONSE_MESSAGE || "You still have a loan with {STATUS} loan status",
+        });
+        return;
+      }
+      else if (responseCode === "L_5") {
+        Toast.show({
+          type: "error",
+          text1: "Cannot Apply",
+          text2: result?.RESPONSE_MESSAGE || "Loan has an active loan.",
+        });
+        return;
+      }
+      else if (responseCode === "L_6") {
+        Toast.show({
+          type: "error",
+          text1: "Cannot Apply",
+          text2: result?.RESPONSE_MESSAGE || "Loan has an active loan.",
+        });
+        return;
+      }
+      else if (responseCode === "L_14") {
+        Toast.show({
+          type: "error",
+          text1: "Cannot Apply",
+          text2: result?.RESPONSE_MESSAGE || "Loan has an active loan.",
+        });
+        return;
+      }
+      else if (result?.RESPONSE_CODE !== "L_0" || result?.status === "error") {
+        Toast.show({
+          type: "error",
+          text1: "Cannot Apply",
+          text2: result?.RESPONSE_MESSAGE || "You are not eligible to apply for a loan.",
+        });
+        return;
+      }
+
+      // Validation passed — proceed to apply
+      router.push("/applyforloan");
+
+    } catch (error: any) {
+      if (axios.isAxiosError(error)) {
+        const message =
+          error.response?.data?.message ||
+          error.response?.data?.Message ||
+          "Validation failed. Please try again.";
+
+        Toast.show({
+          type: "error",
+          text1: "Cannot Apply",
+          text2: message,
+        });
+
+        if (error.response?.status === 401) {
+          router.replace("/login");
+        }
+      } else {
+        console.error("Unexpected validation error:", error);
+      }
+    }
+  };
+
+  const getLoanBlockMessage = (code: string): string => {
+    const messages: Record<string, string> = {
+      "L_0": "You are not eligible to apply for a loan.",
+      "L_2": "You already have an active loan.",
+      "L_5": "Loan processing has been disabled for a specific amount of time.()",
+      "L_3": "Your account is not yet verified.",
+    };
+    return messages[code] ?? `Application not allowed. (${code})`;
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -203,12 +322,15 @@ export default function HomeScreen() {
       {/* Apply Button */}
       <TouchableOpacity
         style={styles.applyButton}
-        onPress={() => router.push("/applyforloan")}
+        // onPress={() => router.push("/applyforloan")}
+        
+        onPress={handleApplyForLoan}
       >
         <Text style={styles.applyButtonText}>Apply for Loan</Text>
       </TouchableOpacity>
     </View>
   );
+  
 }
 
 const styles = StyleSheet.create({

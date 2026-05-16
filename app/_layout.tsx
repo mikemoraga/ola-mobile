@@ -14,8 +14,8 @@ import Toast from 'react-native-toast-message';
 import CustomToastConfig from './customtoast';
 
 // ------------------ Global API URL ---------------------------------------------
- // global.API_URL = 'https://devolamobile-api.manilateachersonline.com/'; // deployed
-global.API_URL = "http://172.16.20.32:45457/";
+// global.API_URL = 'https://devolamobile-api.manilateachersonline.com/'; // deployed
+global.API_URL = "https://172.16.20.35:45456/";
 // -------------------------------------------------------------------------------
 
 export const unstable_settings = {

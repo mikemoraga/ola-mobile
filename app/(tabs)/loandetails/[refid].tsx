@@ -93,10 +93,10 @@ export default function LoanDetailsPage() {
         "Reference ID": loan.REFID_LOAN,
         "Transaction Date": new Date(loan.TRANDATE).toLocaleString("en-PH"),
         "Step Description": loan.STEP_DESC?.replace(/\r\n/g, " "),
-        "Requested Amount": Number(loan.REQ_AMOUNT).toFixed(2),
+        "Requested Amount": Number(loan.REQ_AMOUNT).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         "Loan Terms": loan.TERMS,
-        "Approved Amount": Number(loan.APPROVED).toFixed(2),
-        "Monthly Amortization": Number(loan.MONTHLY_AMORT).toFixed(2),
+        "Approved Amount": Number(loan.APPROVED).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        "Monthly Amortization": Number(loan.MONTHLY_AMORT).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         "Loan Status": loan.LOAN_STATUS,
         "Remarks": loan.REMARKS,
       }).map(([label, value]) => [label, value])
