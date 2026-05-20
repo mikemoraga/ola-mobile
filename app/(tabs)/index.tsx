@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Row, Table } from "react-native-table-component";
 import Toast from "react-native-toast-message";
+import { ErrorContent, ErrorTitle } from '../../constants/ErrorMessages';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -139,49 +140,52 @@ export default function HomeScreen() {
 
       const responseCode: string = result?.RESPONSE_CODE ?? "";
       const allowUpload: string = result?.ALLOW_UPLOAD ?? "N";
+      const activeStatus: string = result?.ACTIVE_STATUS ?? "N";
+      const lastloandate: Date = result?.LAST_LOANDATE ?? Date.now();
+      const schd: number = result?.SCHD ?? 0;
 
       // If API returns an error/message flag, block navigation
       if (responseCode === "L_1") {
         Toast.show({
           type: "error",
           text1: "Cannot Apply",
-          text2: result?.RESPONSE_MESSAGE || "Unable to proceed with transaction. Loan application is temporarily disabled on your designated branch.",
+          text2: "Unable to proceed with transaction. Loan application is temporarily disabled on your designated branch.",
         });
         return;
       }
       else if (responseCode === "L_2") {
         Toast.show({
           type: "error",
-          text1: "Cannot Apply",
-          text2: result?.RESPONSE_MESSAGE || "You still have a loan with {STATUS} loan status",
+          text1: ErrorTitle(1),
+          text2: ErrorContent(13, { STATUS: activeStatus }),
         });
         return;
       }
       else if (responseCode === "L_5") {
         Toast.show({
           type: "error",
-          text1: "Cannot Apply",
-          text2: result?.RESPONSE_MESSAGE || "Loan has an active loan.",
+          text1: ErrorTitle(1),
+          text2: ErrorContent(18, { LOANSCHD: schd, AFTER: new Date(lastloandate.getTime() + schd * 24 * 60 * 60 * 1000).toLocaleDateString("en-PH") }),
         });
         return;
       }
       else if (responseCode === "L_6") {
         Toast.show({
           type: "error",
-          text1: "Cannot Apply",
-          text2: result?.RESPONSE_MESSAGE || "Loan has an active loan.",
+          text1: ErrorTitle(1),
+          text2: result?.RESPONSE_MESSAGE,
         });
         return;
       }
       else if (responseCode === "L_14") {
         Toast.show({
           type: "error",
-          text1: "Cannot Apply",
-          text2: result?.RESPONSE_MESSAGE || "Loan has an active loan.",
+          text1: ErrorTitle(9),
+          text2: result?.RESPONSE_MESSAGE || ErrorContent(3),
         });
         return;
       }
-      else if (result?.RESPONSE_CODE !== "L_0" || result?.status === "error") {
+      else if (result?.status === "error") {
         Toast.show({
           type: "error",
           text1: "Cannot Apply",
@@ -213,16 +217,6 @@ export default function HomeScreen() {
         console.error("Unexpected validation error:", error);
       }
     }
-  };
-
-  const getLoanBlockMessage = (code: string): string => {
-    const messages: Record<string, string> = {
-      "L_0": "You are not eligible to apply for a loan.",
-      "L_2": "You already have an active loan.",
-      "L_5": "Loan processing has been disabled for a specific amount of time.()",
-      "L_3": "Your account is not yet verified.",
-    };
-    return messages[code] ?? `Application not allowed. (${code})`;
   };
 
   return (
