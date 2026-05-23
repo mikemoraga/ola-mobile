@@ -95,7 +95,8 @@ export default function LoanConfirmation() {
 
       const list = res.data?.Proceeds || [];
       const mapped = list.map((x: any) => x.Description.toLowerCase());
-
+      console.log("Proceeds options:", mapped);
+      
       setProceedsOptions(mapped);
     } catch (err) {
       console.log("LoanType error:", err);
@@ -238,7 +239,7 @@ export default function LoanConfirmation() {
             {/* METHODS */}
             <Text style={styles.label}>Disbursement Method</Text>
 
-            {proceedsOptions.includes("bank") && (
+            {proceedsOptions.some(o => o.includes("bank")) && (
               <TouchableOpacity
                 style={[
                   styles.optionCard,
@@ -266,7 +267,7 @@ export default function LoanConfirmation() {
               </TouchableOpacity>
             )}
 
-            {proceedsOptions.includes("cheque") && (
+            {proceedsOptions.some(o => o.includes("cheque")) && (
               <TouchableOpacity
                 style={[
                   styles.optionCard,

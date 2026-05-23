@@ -45,8 +45,18 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ], 
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow OLA Mobile to access your camera."
+        }
+      ],
+      "expo-file-system",
+      "@react-native-community/datetimepicker",
+      "expo-web-browser"
     ],
+    
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

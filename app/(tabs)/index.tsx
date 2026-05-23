@@ -4,12 +4,13 @@ import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Row, Table } from "react-native-table-component";
 import Toast from "react-native-toast-message";
 import { ErrorContent, ErrorTitle } from '../../constants/ErrorMessages';
 
 export default function HomeScreen() {
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const { refresh } = useLocalSearchParams(); // now works
 
@@ -80,7 +81,15 @@ export default function HomeScreen() {
           setLoading(false);
         }
       };
+    const onRefresh = async () => {
+      setRefreshing(true);
 
+      await fetchUserAndLoans(); // updates everything
+      setCurrentPage(1);
+
+      setRefreshing(false);
+    };
+    
     useEffect(() => {
       fetchUserAndLoans();
     }, [refresh]); // now it will refetch when refresh param changes
@@ -250,46 +259,65 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Table */}
+      {/* Table */} 
       <View style={styles.tableCard}>
-        <Table>
+        <ScrollView
+          nestedScrollEnabled
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#ff5a5f"]}
+              tintColor="#ff5a5f"
+            />
+          }
+        >
+          <Table>
           {/* Always show headers */}
           <Row data={tableHead} style={styles.tableHead} textStyle={styles.tableHeadText} />
           
-          {loading ? (
-            <View style={{ padding: 30, alignItems: "center" }}>
-              <ActivityIndicator size="large" color="#ff5a5f" />
-              <Text style={{ marginTop: 10 }}>Loading loans...</Text>
-            </View>
-          ) : (
-            currentData.map((rowData, index) => {
-              const refid = rowData[0];
-              return (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/loandetails/[refid]",
-                      params: { refid },
-                    })
-                  }
-                  activeOpacity={0.7}
-                >
-                  <Row
-                    data={rowData}
-                    style={{
-                      height: 40,
-                      backgroundColor: index % 2 === 0 ? "#f5f5f5" : "#e0e0e0",
-                      borderBottomWidth: 1,
-                      borderBottomColor: "rgba(0,0,0,0.1)",
-                    }}
-                    textStyle={styles.tableText}
-                  />
-                </TouchableOpacity>
-              );
-            })
-          )}
-        </Table>
+          {loading || refreshing ? (
+              <View style={{ padding: 30, alignItems: "center" }}> 
+                <Text style={{ marginTop: 10 }}>
+                  {refreshing ? "Refreshing loans..." : "Loading loans..."}
+                </Text>
+              </View>
+            ) : currentData.length === 0 ? (
+              <View style={{ padding: 30, alignItems: "center" }}>
+                <Text>No loan records found.</Text>
+              </View>
+            ) : (
+              currentData.map((rowData, index) => {
+                const refid = rowData[0];
+
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/loandetails/[refid]",
+                        params: { refid },
+                      })
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Row
+                      data={rowData}
+                      style={{
+                        height: 40,
+                        backgroundColor:
+                          index % 2 === 0 ? "#f5f5f5" : "#e0e0e0",
+                        borderBottomWidth: 1,
+                        borderBottomColor: "rgba(0,0,0,0.1)",
+                      }}
+                      textStyle={styles.tableText}
+                    />
+                  </TouchableOpacity>
+                );
+              })
+            )}
+            </Table>
+        </ScrollView>
       </View>
 
       {/* Pagination */}

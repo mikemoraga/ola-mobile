@@ -101,10 +101,14 @@ export default function LoanDetailsPage() {
         "Remarks": loan.REMARKS,
       }).map(([label, value]) => [label, value])
     : [];
+    
+  // FOR DISABLING CANCEL AND CONFIRM BUTTONS
+  const cancelled = loan?.REMARKS === "Cancelled" || loan?.LOAN_STATUS?.toLowerCase() === "released" 
+                  || loan?.LOAN_STATUS?.toLowerCase() === "confirmed" || loan?.LOAN_STATUS?.toLowerCase() === "credited";
 
-  const cancelled = loan?.REMARKS === "Cancelled" || loan?.LOAN_STATUS?.toLowerCase() === "released" || loan?.LOAN_STATUS?.toLowerCase() === "confirmed";
-
-  const disabledConfirm = loan?.REMARKS === "Cancelled" || loan?.LOAN_STATUS?.toLowerCase() === "confirmed" || loan?.LOAN_STATUS?.toLowerCase() === "released" || loan?.LOAN_STATUS?.toLowerCase() === "submitted";
+  const disabledConfirm = loan?.REMARKS === "Cancelled" || loan?.LOAN_STATUS?.toLowerCase() === "confirmed" || 
+                        loan?.LOAN_STATUS?.toLowerCase() === "released" || loan?.LOAN_STATUS?.toLowerCase() === "submitted"|| 
+                        loan?.LOAN_STATUS?.toLowerCase() === "credited";
 
   const handleCancel = () => {
     setShowModal(true);

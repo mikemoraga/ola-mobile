@@ -3,7 +3,7 @@ import { getData } from "@/utils/storage";
 import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -103,7 +103,6 @@ export default function ApplyForLoan() {
 
       let loanRefId = baseLoanRefId;
 
-      // 🔑 GENERATE ONCE
       if (!loanRefId) {
         const idRes = await axios.post(
           `${API_URL}api/OLMS/Reference/Loan/Id`,
@@ -112,7 +111,10 @@ export default function ApplyForLoan() {
         );
 
         const actId = idRes.data?.[0]?.ACT_ID;
-        if (!actId) throw new Error("No ACT_ID");
+        if (!actId) {
+          Toast.show({ type: "error", text1: "Failed to generate loan ID" });
+          return;
+        }
 
         const random = Math.floor(Math.random() * 9000000000) + 1000000000;
         loanRefId = `${actId}${random}`;
@@ -123,10 +125,21 @@ export default function ApplyForLoan() {
       setFinalFilename(filename);
 
       const ftpRef = await getData("ftpRef");
+      if (!ftpRef) {
+        Toast.show({ type: "error", text1: "FTP config missing" });
+        return;
+      }
 
-      const fileBase64 = await FileSystem.readAsStringAsync(file.uri, {
-        encoding: "base64",
-      });
+      let fileBase64: string;
+      try {
+        fileBase64 = await FileSystem.readAsStringAsync(file.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      } catch (e: any) {
+        console.error("File read error:", e);
+        Toast.show({ type: "error", text1: "Failed to read file", text2: e?.message });
+        return;
+      }
 
       await axios.post(
         `${API_URL}api/OLMS/Loan/SavingPayslipFTP`,
@@ -145,8 +158,10 @@ export default function ApplyForLoan() {
 
       setPayslip(file);
       Toast.show({ type: "success", text1: "Payslip uploaded" });
-    } catch (e) {
-      Toast.show({ type: "error", text1: "Upload failed" });
+
+    } catch (e: any) {
+      console.error("Upload error:", e);
+      Toast.show({ type: "error", text1: "Upload failed", text2: e?.message || "Unknown error" });
     } finally {
       setUploadingPayslip(false);
     }
@@ -215,8 +230,8 @@ export default function ApplyForLoan() {
   };
 
   const handleClear = () => {
-    setAmount("");
-    setTerms("");
+    setAmount(amountOptions[0]?.toString() || "");
+    setTerms(termOptions[0] || "");
     setMonthlyAmort(null);
     setComputed(false);
   };
@@ -242,36 +257,37 @@ export default function ApplyForLoan() {
   const handleCameraPayslip = async () => {
     if (!user) return;
 
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Toast.show({ type: "error", text1: "Camera permission denied" });
-      return;
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Toast.show({ type: "error", text1: "Camera permission denied" });
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      if (!asset?.uri) {
+        Toast.show({ type: "error", text1: "No image captured" });
+        return;
+      }
+
+      const fileName = `camera_${Date.now()}.jpg`;
+      const newPath = `${FileSystem.cacheDirectory}${fileName}`;
+
+      await FileSystem.copyAsync({ from: asset.uri, to: newPath });
+
+      await uploadPayslipFile({ uri: newPath, name: fileName });
+
+    } catch (e: any) {
+      console.error("Camera error:", e);
+      Toast.show({ type: "error", text1: "Camera failed", text2: e?.message || "Unknown error" });
     }
-
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
-
-    if (result.canceled) return;
-
-    const asset = result.assets[0];
-
-    // create a real file with a name
-    const fileName = `camera_${Date.now()}.jpg`;
-    const newPath = `${FileSystem.cacheDirectory}${fileName}`;
-
-    await FileSystem.copyAsync({
-      from: asset.uri,
-      to: newPath,
-    });
-
-    const file = {
-      uri: newPath,
-      name: fileName,
-    };
-
-    await uploadPayslipFile(file);
   };
 
   return (
@@ -296,7 +312,7 @@ export default function ApplyForLoan() {
           <View style={styles.formCard}>
             <Text style={styles.label}>Requested Amount</Text>
             <View style={styles.pickerContainer}>
-              <Picker selectedValue={amount} onValueChange={(v) => setAmount(v)} enabled={step === 1}>
+              <Picker selectedValue={amount} onValueChange={(v) => setAmount(v)} enabled={step === 1 && !computed}>
                 {amountOptions.map((val) => (
                   <Picker.Item key={val} label={`₱${val.toLocaleString()}`} value={val.toString()} />
                 ))}
@@ -305,7 +321,7 @@ export default function ApplyForLoan() {
 
             <Text style={styles.label}>Terms of Loan</Text>
             <View style={styles.pickerContainer}>
-              <Picker selectedValue={terms} onValueChange={(v) => setTerms(v)} enabled={step === 1}>
+              <Picker selectedValue={terms} onValueChange={(v) => setTerms(v)} enabled={step === 1 && !computed}>
                 {termOptions.map((val) => (
                   <Picker.Item key={val} label={`${val} months`} value={val} />
                 ))}
